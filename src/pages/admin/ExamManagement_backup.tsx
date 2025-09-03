@@ -57,21 +57,13 @@ export default function ExamManagement() {
   });
 
   const candidates = sampleUsers.filter(u => u.role === 'candidate');
-
-  const wizardSteps = [
-    { id: 1, title: 'General Settings', icon: Settings },
-    { id: 2, title: 'Question Pool', icon: Edit },
-    { id: 3, title: 'Proctoring', icon: Shield },
-    { id: 4, title: 'Scheduling', icon: CalendarIcon },
-    { id: 5, title: 'Assignment', icon: Users }
-  ];
-
+  
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published': return 'bg-green-500';
-      case 'draft': return 'bg-yellow-500';
-      case 'completed': return 'bg-blue-500';
-      default: return 'bg-gray-500';
+      case 'published': return 'bg-success';
+      case 'draft': return 'bg-warning';
+      case 'completed': return 'bg-muted';
+      default: return 'bg-muted';
     }
   };
 
@@ -108,29 +100,25 @@ export default function ExamManagement() {
       startDate: new Date(exam.startDate),
       endDate: new Date(exam.endDate),
       questions: exam.questions.map((q: any) => q.id),
-      assignedCandidates: exam.assignedCandidates || []
+      assignedCandidates: exam.assignedCandidates
     });
     setCurrentStep(1);
     setShowEditDialog(true);
   };
 
   const handleUpdateExam = () => {
-    if (!selectedExam) return;
-    
     const updatedExam = {
       ...selectedExam,
       ...newExam,
       startDate: newExam.startDate.toISOString(),
       endDate: newExam.endDate.toISOString(),
-      questions: sampleQuestions.slice(0, 4) // Sample questions
+      questions: sampleQuestions.slice(0, 4) // Keep existing questions for now
     };
     
-    setExams(exams.map(exam => 
-      exam.id === selectedExam.id ? updatedExam : exam
-    ));
-    
+    setExams(exams.map(exam => exam.id === selectedExam.id ? updatedExam : exam));
     setShowEditDialog(false);
     setCurrentStep(1);
+    setSelectedExam(null);
     
     toast({
       title: 'Exam Updated',
@@ -143,14 +131,23 @@ export default function ExamManagement() {
     toast({
       title: 'Exam Deleted',
       description: 'Exam has been deleted successfully.',
+      variant: 'destructive'
     });
   };
+
+  const wizardSteps = [
+    { id: 1, title: 'General Settings', icon: Settings },
+    { id: 2, title: 'Question Pool', icon: Edit },
+    { id: 3, title: 'Proctoring', icon: Shield },
+    { id: 4, title: 'Scheduling', icon: CalendarIcon },
+    { id: 5, title: 'Assignment', icon: Users }
+  ];
 
   const renderWizardStep = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Exam Title</Label>
@@ -179,7 +176,6 @@ export default function ExamManagement() {
                 placeholder="Describe the exam purpose and content..."
                 value={newExam.description}
                 onChange={(e) => setNewExam({...newExam, description: e.target.value})}
-                rows={4}
               />
             </div>
             
@@ -217,23 +213,17 @@ export default function ExamManagement() {
       
       case 2:
         return (
-          <div className="text-center py-12">
-            <Edit className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-            <h3 className="text-xl font-medium mb-4">Question Pool Setup</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Select questions from your question bank or create new ones for this exam
-            </p>
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <div className="bg-primary/10 px-4 py-2 rounded-lg">
-                <span className="text-sm font-medium">4 questions selected</span>
+          <div className="space-y-4">
+            <div className="text-center py-8">
+              <Edit className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Question Pool Setup</h3>
+              <p className="text-muted-foreground mb-4">
+                Select questions from your question bank or create new ones
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <Badge variant="outline">4 questions selected</Badge>
+                <Badge variant="secondary">Mixed difficulties</Badge>
               </div>
-              <div className="bg-secondary px-4 py-2 rounded-lg">
-                <span className="text-sm font-medium">Mixed difficulties</span>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-center">
-              <Button variant="outline">Browse Question Bank</Button>
-              <Button>Create New Question</Button>
             </div>
           </div>
         );
@@ -241,10 +231,10 @@ export default function ExamManagement() {
       case 3:
         return (
           <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h3 className="font-medium">Enable Proctoring</h3>
-                <p className="text-sm text-muted-foreground">Monitor students during the exam</p>
+                <h3 className="text-lg font-medium">Proctoring Settings</h3>
+                <p className="text-sm text-muted-foreground">Configure monitoring and security features</p>
               </div>
               <Switch
                 checked={newExam.proctoringEnabled}
@@ -252,22 +242,41 @@ export default function ExamManagement() {
               />
             </div>
             
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <Label>Randomize Questions</Label>
-                  <p className="text-sm text-muted-foreground">Shuffle question order for each student</p>
+            {newExam.proctoringEnabled && (
+              <div className="space-y-4 pl-4 border-l-2 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <Label>Webcam Recording</Label>
+                  <Switch defaultChecked />
                 </div>
+                <div className="flex items-center justify-between">
+                  <Label>Screen Recording</Label>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Tab Switch Detection</Label>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Face Detection</Label>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Audio Monitoring</Label>
+                  <Switch />
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Randomize Questions</Label>
                 <Switch
                   checked={newExam.randomizeQuestions}
                   onCheckedChange={(checked) => setNewExam({...newExam, randomizeQuestions: checked})}
                 />
               </div>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <Label>Negative Marking</Label>
-                  <p className="text-sm text-muted-foreground">Deduct marks for incorrect answers</p>
-                </div>
+              <div className="flex items-center justify-between">
+                <Label>Negative Marking</Label>
                 <Switch
                   checked={newExam.negativeMarking}
                   onCheckedChange={(checked) => setNewExam({...newExam, negativeMarking: checked})}
@@ -279,8 +288,8 @@ export default function ExamManagement() {
         
       case 4:
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date & Time</Label>
                 <Popover>
@@ -339,22 +348,28 @@ export default function ExamManagement() {
                 </Popover>
               </div>
             </div>
+            
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <h4 className="font-medium mb-2">Exam Window</h4>
+              <p className="text-sm text-muted-foreground">
+                Students can start the exam anytime within this window. Once started, they'll have {newExam.duration} minutes to complete it.
+              </p>
+            </div>
           </div>
         );
         
       case 5:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Select Candidates</Label>
-              <div className="max-h-80 overflow-y-auto border rounded-md">
+              <Label>Assign to Candidates</Label>
+              <div className="max-h-60 overflow-y-auto border rounded-md">
                 {candidates.map((candidate) => (
-                  <div key={candidate.id} className="flex items-center space-x-3 p-4 border-b last:border-b-0 hover:bg-muted/50">
+                  <div key={candidate.id} className="flex items-center space-x-2 p-3 border-b last:border-b-0">
                     <input
                       type="checkbox"
                       id={`candidate-${candidate.id}`}
                       className="rounded"
-                      checked={newExam.assignedCandidates.includes(candidate.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
                           setNewExam({
@@ -369,15 +384,19 @@ export default function ExamManagement() {
                         }
                       }}
                     />
-                    <div className="flex-1">
-                      <Label htmlFor={`candidate-${candidate.id}`} className="cursor-pointer font-medium">
-                        {candidate.name}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">{candidate.email}</p>
-                    </div>
+                    <Label htmlFor={`candidate-${candidate.id}`} className="flex-1 cursor-pointer">
+                      {candidate.name} ({candidate.email})
+                    </Label>
                   </div>
                 ))}
               </div>
+            </div>
+            
+            <div className="p-4 bg-primary/5 rounded-lg">
+              <h4 className="font-medium mb-2">Assignment Summary</h4>
+              <p className="text-sm text-muted-foreground">
+                {newExam.assignedCandidates.length} candidates will be notified via email and SMS with login credentials.
+              </p>
             </div>
           </div>
         );
@@ -402,117 +421,77 @@ export default function ExamManagement() {
           Create Exam
         </Button>
       </div>
-
-      {/* Exam Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
-            <Edit className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{exams.length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Published</CardTitle>
-            <Play className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{exams.filter(e => e.status === 'published').length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Draft</CardTitle>
-            <Pause className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{exams.filter(e => e.status === 'draft').length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{exams.filter(e => e.status === 'completed').length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Exam List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>All Exams</CardTitle>
-              <CardDescription>Manage your examination portfolio</CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search exams..." className="pl-8 w-64" />
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {exams.map((exam) => (
-              <div key={exam.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold">{exam.title}</h3>
-                      <Badge className={`${getStatusColor(exam.status)} text-white`}>
-                        {getStatusIcon(exam.status)}
-                        <span className="ml-1 capitalize">{exam.status}</span>
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">{exam.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {exam.duration} min
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {exam.assignedCandidates?.length || 0} candidates
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Shield className="h-4 w-4" />
-                        {exam.proctoringEnabled !== false ? 'Proctored' : 'Not Proctored'}
-                      </div>
-                    </div>
-                  </div>
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Exam</DialogTitle>
+            <DialogDescription>
+              Follow the 5-step wizard to set up your examination
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Wizard Steps */}
+          <div className="flex items-center justify-between mb-6">
+            {wizardSteps.map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                    currentStep === step.id
+                      ? 'bg-primary text-primary-foreground'
+                      : currentStep > step.id
+                      ? 'bg-success text-success-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {currentStep > step.id ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <step.icon className="h-4 w-4" />
+                  )}
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleViewExam(exam)}>
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleEditExam(exam)}>
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDeleteExam(exam.id)}>
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+                <div className="ml-2 hidden sm:block">
+                  <p className="text-sm font-medium">{step.title}</p>
                 </div>
+                {index < wizardSteps.length - 1 && (
+                  <div className="w-12 h-0.5 bg-border mx-4" />
+                )}
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
+          
+          {/* Step Content */}
+          <div className="min-h-[300px]">
+            {renderWizardStep()}
+          </div>
+          
+          {/* Navigation */}
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+              disabled={currentStep === 1}
+            >
+              Previous
+            </Button>
+            
+            <div className="flex gap-2">
+              {currentStep < 5 ? (
+                <Button
+                  onClick={() => setCurrentStep(Math.min(5, currentStep + 1))}
+                  className="bg-gradient-primary"
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button onClick={handleCreateExam} className="bg-gradient-primary">
+                  Create Exam
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
       {/* View Exam Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -605,9 +584,9 @@ export default function ExamManagement() {
               </div>
               
               <div className="space-y-4">
-                <Label className="text-sm font-medium text-muted-foreground">Assigned Candidates ({selectedExam.assignedCandidates?.length || 0})</Label>
+                <Label className="text-sm font-medium text-muted-foreground">Assigned Candidates ({selectedExam.assignedCandidates.length})</Label>
                 <div className="max-h-40 overflow-y-auto border rounded-md p-4">
-                  {(selectedExam.assignedCandidates || []).map((candidateId: string) => {
+                  {selectedExam.assignedCandidates.map((candidateId: string) => {
                     const candidate = candidates.find(c => c.id === candidateId);
                     return candidate ? (
                       <div key={candidateId} className="mb-2 last:mb-0">
@@ -621,7 +600,7 @@ export default function ExamManagement() {
           )}
         </DialogContent>
       </Dialog>
-
+      
       {/* Edit Exam Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
@@ -696,6 +675,269 @@ export default function ExamManagement() {
           </div>
         </DialogContent>
       </Dialog>
+      
+            <DialogHeader>
+              <DialogTitle>View Exam Details</DialogTitle>
+              <DialogDescription>
+                Complete details of the selected examination
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedExam && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Title</Label>
+                      <p className="text-lg font-semibold">{selectedExam.title}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Subject</Label>
+                      <p>{selectedExam.subject}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+                      <p className="text-sm">{selectedExam.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Duration</Label>
+                        <p>{selectedExam.duration} minutes</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Total Marks</Label>
+                        <p>{selectedExam.totalMarks}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Passing Marks</Label>
+                        <p>{selectedExam.passingMarks}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                        <Badge className={`${getStatusColor(selectedExam.status)} text-white`}>
+                          {getStatusIcon(selectedExam.status)}
+                          <span className="ml-1 capitalize">{selectedExam.status}</span>
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Start Date</Label>
+                    <p>{format(new Date(selectedExam.startDate), 'PPP p')}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">End Date</Label>
+                    <p>{format(new Date(selectedExam.endDate), 'PPP p')}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-muted-foreground">Settings</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      <span>Proctoring: {selectedExam.proctoringEnabled ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Edit className="h-4 w-4" />
+                      <span>Randomize: {selectedExam.randomizeQuestions !== false ? 'Yes' : 'No'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-muted-foreground">Questions ({selectedExam.questions.length})</Label>
+                  <div className="max-h-40 overflow-y-auto border rounded-md p-4">
+                    {selectedExam.questions.map((question: any, index: number) => (
+                      <div key={question.id} className="mb-2 last:mb-0">
+                        <p className="text-sm font-medium">Q{index + 1}: {question.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-muted-foreground">Assigned Candidates ({selectedExam.assignedCandidates.length})</Label>
+                  <div className="max-h-40 overflow-y-auto border rounded-md p-4">
+                    {selectedExam.assignedCandidates.map((candidateId: string) => {
+                      const candidate = candidates.find(c => c.id === candidateId);
+                      return candidate ? (
+                        <div key={candidateId} className="mb-2 last:mb-0">
+                          <p className="text-sm">{candidate.name} ({candidate.email})</p>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+        
+        {/* Edit Exam Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+            <DialogHeader>
+              <DialogTitle>Edit Exam</DialogTitle>
+              <DialogDescription>
+                Modify the examination settings and configuration
+              </DialogDescription>
+            </DialogHeader>
+            
+            {/* Wizard Steps */}
+            <div className="flex items-center justify-between mb-6 overflow-x-auto pb-2">
+              <div className="flex items-center min-w-max">
+                {wizardSteps.map((step, index) => (
+                  <div key={step.id} className="flex items-center">
+                    <div
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
+                        currentStep === step.id
+                          ? 'bg-primary text-primary-foreground'
+                          : currentStep > step.id
+                          ? 'bg-success text-success-foreground'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {currentStep > step.id ? (
+                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                      ) : (
+                        <step.icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </div>
+                    <div className="ml-2 hidden lg:block">
+                      <p className="text-xs sm:text-sm font-medium whitespace-nowrap">{step.title}</p>
+                    </div>
+                    {index < wizardSteps.length - 1 && (
+                      <div className="w-8 sm:w-12 h-0.5 bg-border mx-2 sm:mx-4" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Step Content */}
+            <div className="min-h-[300px]">
+              {renderWizardStep()}
+            </div>
+            
+            {/* Navigation */}
+            <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                disabled={currentStep === 1}
+                className="w-full sm:w-auto"
+              >
+                Previous
+              </Button>
+              
+              <div className="flex gap-2 w-full sm:w-auto">
+                {currentStep < 5 ? (
+                  <Button
+                    onClick={() => setCurrentStep(Math.min(5, currentStep + 1))}
+                    className="bg-gradient-primary flex-1 sm:flex-none"
+                  >
+                    Next
+                  </Button>
+                ) : (
+                  <Button onClick={handleUpdateExam} className="bg-gradient-primary flex-1 sm:flex-none">
+                    Update Exam
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Exam List */}
+      <div className="space-y-4">
+        {exams.map((exam) => (
+          <Card key={exam.id} className="dashboard-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-semibold">{exam.title}</h3>
+                    <Badge className={`${getStatusColor(exam.status)} text-white`}>
+                      {getStatusIcon(exam.status)}
+                      <span className="ml-1 capitalize">{exam.status}</span>
+                    </Badge>
+                    {exam.proctoringEnabled && (
+                      <Badge variant="outline">
+                        <Shield className="mr-1 h-3 w-3" />
+                        Proctored
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <p className="text-muted-foreground">{exam.description}</p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{exam.duration} minutes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Edit className="h-4 w-4 text-muted-foreground" />
+                      <span>{exam.questions.length} questions</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                      <span>{exam.totalMarks} marks</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span>{exam.assignedCandidates.length} candidates</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span><strong>Subject:</strong> {exam.subject}</span>
+                    <span><strong>Start:</strong> {format(new Date(exam.startDate), 'PPP')}</span>
+                    <span><strong>End:</strong> {format(new Date(exam.endDate), 'PPP')}</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 ml-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="hover-scale"
+                    onClick={() => handleViewExam(exam)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="hover-scale"
+                    onClick={() => handleEditExam(exam)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="hover-scale text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteExam(exam.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

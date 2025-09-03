@@ -561,8 +561,8 @@ export const sampleExams: Exam[] = [
     randomizeQuestions: true,
     proctoringEnabled: true,
     status: 'published',
-    startDate: '2024-12-15T03:30:00Z', // 9:00 AM IST
-    endDate: '2024-12-15T10:30:00Z', // 4:00 PM IST
+    startDate: '2025-09-03T04:00:00Z', // 9:30 AM IST (currently active)
+    endDate: '2025-09-03T12:00:00Z', // 5:30 PM IST (ends today)
     questions: sampleQuestions.slice(0, 8),
     assignedCandidates: ['3', '4', '5', '6', '7'],
     examType: 'entrance',

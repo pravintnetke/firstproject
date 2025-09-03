@@ -65,6 +65,51 @@ export default function Results() {
     // Implementation would generate and download all results
   };
 
+  const downloadReport = (result: ExamResult) => {
+    const exam = sampleExams.find(e => e.id === result.examId);
+    const reportData = {
+      examTitle: exam?.title || 'Unknown Exam',
+      candidateName: currentCandidate?.name || 'Unknown',
+      score: result.score,
+      totalMarks: result.totalMarks,
+      percentage: result.percentage,
+      status: result.status,
+      timeTaken: result.timeTaken,
+      submittedAt: result.submittedAt,
+      subject: exam?.subject || 'Unknown'
+    };
+
+    // Create and download PDF-like report content
+    const reportContent = `
+EXAM RESULT REPORT
+==================
+
+Candidate: ${reportData.candidateName}
+Exam: ${reportData.examTitle}
+Subject: ${reportData.subject}
+Date: ${format(new Date(reportData.submittedAt), 'PPP')}
+
+PERFORMANCE SUMMARY
+==================
+Score: ${reportData.score}/${reportData.totalMarks}
+Percentage: ${reportData.percentage}%
+Status: ${reportData.status.toUpperCase()}
+Time Taken: ${reportData.timeTaken} minutes
+
+Generated on: ${format(new Date(), 'PPP p')}
+    `;
+
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${reportData.examTitle.replace(/\s+/g, '_')}_Report.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const ResultCard = ({ result }: { result: ExamResult }) => {
     const exam = sampleExams.find(e => e.id === result.examId);
     const { grade, color } = getGradeFromPercentage(result.percentage);
@@ -145,7 +190,7 @@ export default function Results() {
                 <Eye className="mr-1 h-3 w-3" />
                 View
               </Button>
-              <Button variant="outline" size="sm" onClick={() => console.log('Download report for', result.id)}>
+              <Button variant="outline" size="sm" onClick={() => downloadReport(result)}>
                 <Download className="mr-1 h-3 w-3" />
                 Report
               </Button>

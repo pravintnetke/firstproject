@@ -48,8 +48,171 @@ export default function ResultDetailModal({ result, open, onOpenChange }: Result
   const { grade, color } = getGradeFromPercentage(result.percentage);
 
   const exportResult = (format: 'pdf' | 'csv') => {
-    console.log(`Exporting result as ${format}`);
-    // Implementation would generate and download the result
+    if (format === 'pdf') {
+      generatePDFReport();
+    } else {
+      generateCSVReport();
+    }
+  };
+
+  const generatePDFReport = () => {
+    // Create PDF content using browser's print functionality
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const correctAnswers = Object.keys(result.answers).filter(qId => {
+      const question = questions.find(q => q.id === qId);
+      return question && result.answers[qId] === question.correctAnswer;
+    }).length;
+
+    const subjectBreakdown = ['Geography', 'Biology', 'Astronomy', 'Mathematics'].map(subject => {
+      const subjectQuestions = questions.filter(q => q.subject === subject);
+      const correctAnswers = subjectQuestions.filter(q => 
+        result.answers[q.id] === q.correctAnswer
+      ).length;
+      const percentage = subjectQuestions.length > 0 
+        ? Math.round((correctAnswers / subjectQuestions.length) * 100)
+        : 0;
+      return { subject, correct: correctAnswers, total: subjectQuestions.length, percentage };
+    });
+
+    const difficultyBreakdown = ['easy', 'medium', 'hard'].map(difficulty => {
+      const difficultyQuestions = questions.filter(q => q.difficulty === difficulty);
+      const correctAnswers = difficultyQuestions.filter(q => 
+        result.answers[q.id] === q.correctAnswer
+      ).length;
+      const percentage = difficultyQuestions.length > 0 
+        ? Math.round((correctAnswers / difficultyQuestions.length) * 100)
+        : 0;
+      return { difficulty, correct: correctAnswers, total: difficultyQuestions.length, percentage };
+    });
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Exam Result Report</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dotted #ccc; }
+        .score-box { text-align: center; border: 2px solid #333; padding: 20px; margin: 20px 0; }
+        .grade { font-size: 2em; font-weight: bold; color: ${result.percentage >= 80 ? '#22c55e' : result.percentage >= 60 ? '#f59e0b' : '#ef4444'}; }
+        .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .breakdown-table th, .breakdown-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        .breakdown-table th { background-color: #f5f5f5; }
+        @media print { body { margin: 0; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>DETAILED EXAM RESULT REPORT</h1>
+        <p><strong>${exam?.title || 'Unknown Exam'}</strong></p>
+        <p>Generated on: ${format(new Date(), 'PPP p')}</p>
+      </div>
+
+      <div class="section">
+        <h2>Candidate Information</h2>
+        <div class="info-item"><span>Exam:</span><span>${exam?.title || 'Unknown Exam'}</span></div>
+        <div class="info-item"><span>Subject:</span><span>${exam?.subject || 'Unknown'}</span></div>
+        <div class="info-item"><span>Date:</span><span>${format(new Date(result.submittedAt), 'PPP')}</span></div>
+        <div class="info-item"><span>Duration:</span><span>${exam?.duration || 0} minutes</span></div>
+      </div>
+
+      <div class="section">
+        <h2>Performance Summary</h2>
+        <div class="score-box">
+          <div class="grade">${getGradeFromPercentage(result.percentage).grade}</div>
+          <div style="font-size: 1.5em; margin: 10px 0;">${result.score}/${result.totalMarks} (${result.percentage}%)</div>
+          <div style="color: ${result.status === 'passed' ? '#22c55e' : '#ef4444'}; font-weight: bold; font-size: 1.2em;">
+            ${result.status.toUpperCase()}
+          </div>
+        </div>
+        <div class="info-item"><span>Time Taken:</span><span>${result.timeTaken} minutes</span></div>
+        <div class="info-item"><span>Time Remaining:</span><span>${(exam?.duration || 0) - result.timeTaken} minutes</span></div>
+      </div>
+
+      <div class="section">
+        <h2>Question Analysis</h2>
+        <div class="info-item"><span>Total Questions:</span><span>${questions.length}</span></div>
+        <div class="info-item"><span>Correct Answers:</span><span>${correctAnswers}</span></div>
+        <div class="info-item"><span>Accuracy Rate:</span><span>${Math.round((correctAnswers / questions.length) * 100)}%</span></div>
+      </div>
+
+      <div class="section">
+        <h2>Subject-wise Breakdown</h2>
+        <table class="breakdown-table">
+          <tr><th>Subject</th><th>Correct</th><th>Total</th><th>Percentage</th></tr>
+          ${subjectBreakdown.map(item => `
+            <tr>
+              <td>${item.subject}</td>
+              <td>${item.correct}</td>
+              <td>${item.total}</td>
+              <td>${item.percentage}%</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Difficulty Analysis</h2>
+        <table class="breakdown-table">
+          <tr><th>Difficulty</th><th>Correct</th><th>Total</th><th>Percentage</th></tr>
+          ${difficultyBreakdown.map(item => `
+            <tr>
+              <td style="text-transform: capitalize;">${item.difficulty}</td>
+              <td>${item.correct}</td>
+              <td>${item.total}</td>
+              <td>${item.percentage}%</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    </body>
+    </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Wait for content to load then trigger print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const generateCSVReport = () => {
+    const csvData = [
+      ['Question', 'Subject', 'Difficulty', 'Your Answer', 'Correct Answer', 'Status', 'Marks'],
+      ...questions.map((question, index) => [
+        `Q${index + 1}`,
+        question.subject,
+        question.difficulty,
+        question.type === 'mcq' && question.options 
+          ? (result.answers[question.id] !== undefined ? question.options[result.answers[question.id] as number] : 'Not answered')
+          : result.answers[question.id] || 'Not answered',
+        question.type === 'mcq' && question.options 
+          ? question.options[question.correctAnswer as number]
+          : question.correctAnswer,
+        result.answers[question.id] === question.correctAnswer ? 'Correct' : 'Incorrect',
+        result.answers[question.id] === question.correctAnswer ? question.marks : 0
+      ])
+    ];
+
+    const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${exam?.title?.replace(/\s+/g, '_') || 'Exam'}_Results.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   return (

@@ -13,6 +13,7 @@ import {
   Clock
 } from 'lucide-react';
 import { dashboardStats, monthlyExamCalendar } from '@/data/sampleData';
+import { useNavigate } from 'react-router-dom';
 
 const workflowSteps = [
   { id: 1, title: 'Create Question Bank', status: 'completed' },
@@ -24,6 +25,8 @@ const workflowSteps = [
 ];
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -34,7 +37,7 @@ export default function AdminDashboard() {
             Welcome back, Dr. Johnson. Here's your exam portal overview.
           </p>
         </div>
-        <Button className="bg-gradient-primary">
+        <Button className="bg-gradient-primary" onClick={() => navigate('/admin/create-exam')}>
           <BookOpen className="mr-2 h-4 w-4" />
           Create New Exam
         </Button>
@@ -238,19 +241,19 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" onClick={() => navigate('/admin/create-exam')}>
               <BookOpen className="h-6 w-6" />
               <span>Create Exam</span>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" onClick={() => navigate('/admin/candidates')}>
               <Users className="h-6 w-6" />
               <span>Add Candidates</span>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" onClick={() => navigate('/admin/proctoring')}>
               <Shield className="h-6 w-6" />
               <span>Review Violations</span>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" onClick={() => navigate('/admin/reports')}>
               <TrendingUp className="h-6 w-6" />
               <span>View Reports</span>
             </Button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +22,9 @@ import {
 } from 'lucide-react';
 import { sampleExams, sampleQuestions } from '@/data/sampleData';
 
-interface ExamInterfaceProps {
-  examId: string;
-}
-
-export default function ExamInterface({ examId }: ExamInterfaceProps) {
+export default function ExamInterface() {
+  const { examId } = useParams<{ examId: string }>();
+  const navigate = useNavigate();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
@@ -39,7 +38,7 @@ export default function ExamInterface({ examId }: ExamInterfaceProps) {
   });
 
   // Get exam data (in real app, fetch from API)
-  const exam = sampleExams[0]; // Using first exam as example
+  const exam = sampleExams.find(e => e.id === examId) || sampleExams[0];
   const questions = exam.questions;
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -116,8 +115,8 @@ export default function ExamInterface({ examId }: ExamInterfaceProps) {
     setIsSubmitting(true);
     // Simulate submission delay
     setTimeout(() => {
-      alert('Exam submitted successfully!');
       setIsSubmitting(false);
+      navigate(`/exam/${examId}/success`);
     }, 2000);
   };
 

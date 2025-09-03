@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +20,12 @@ import {
   Download
 } from 'lucide-react';
 import { sampleExams, sampleUsers } from '@/data/sampleData';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
 export default function MyExams() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [showSystemCheck, setShowSystemCheck] = useState(false);
   const [systemCheckResults, setSystemCheckResults] = useState({
     camera: 'checking',
@@ -30,10 +34,9 @@ export default function MyExams() {
     internet: 'passed'
   });
 
-  // Get current candidate's exams
-  const currentCandidate = sampleUsers.find(u => u.role === 'candidate');
+  // Get current authenticated user's exams
   const myExams = sampleExams.filter(exam => 
-    exam.assignedCandidates.includes(currentCandidate?.id || '')
+    exam.assignedCandidates.includes(user?.id || '')
   );
 
   const upcomingExams = myExams.filter(exam => 
@@ -49,7 +52,7 @@ export default function MyExams() {
     new Date(exam.endDate) < new Date()
   );
 
-  const runSystemCheck = async () => {
+  const runSystemCheck = () => {
     setShowSystemCheck(true);
     
     // Simulate system checks
@@ -60,15 +63,28 @@ export default function MyExams() {
       internet: 'passed'
     });
 
-    // Camera check
+    // Simulate system checks
     setTimeout(() => {
-      setSystemCheckResults(prev => ({ ...prev, camera: 'passed' }));
+      setSystemCheckResults(prev => ({
+        ...prev,
+        camera: Math.random() > 0.3 ? 'passed' : 'failed'
+      }));
     }, 1000);
 
-    // Microphone check
     setTimeout(() => {
-      setSystemCheckResults(prev => ({ ...prev, microphone: 'passed' }));
+      setSystemCheckResults(prev => ({
+        ...prev,
+        microphone: Math.random() > 0.2 ? 'passed' : 'failed'
+      }));
     }, 1500);
+  };
+
+  const handleStartExam = (examId: string) => {
+    navigate(`/exam/${examId}`);
+  };
+
+  const handleViewResult = () => {
+    navigate('/candidate/results');
   };
 
   const getStatusIcon = (status: string) => {
@@ -166,7 +182,7 @@ export default function MyExams() {
                 <Button variant="outline" onClick={runSystemCheck}>
                   System Check
                 </Button>
-                <Button className="bg-gradient-primary">
+                <Button className="bg-gradient-primary" onClick={() => handleStartExam(exam.id)}>
                   <Play className="mr-2 h-4 w-4" />
                   Start Exam
                 </Button>
@@ -179,7 +195,7 @@ export default function MyExams() {
               </Button>
             )}
             {type === 'completed' && (
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleViewResult}>
                 <Download className="mr-2 h-4 w-4" />
                 Result
               </Button>

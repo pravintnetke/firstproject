@@ -10,6 +10,7 @@ import LoginPage from "@/pages/LoginPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import QuestionBank from "@/pages/admin/QuestionBank";
 import ExamManagement from "@/pages/admin/ExamManagement";
+import CreateExam from "@/pages/admin/CreateExam";
 import CandidateManagement from "@/pages/admin/CandidateManagement";
 import Calendar from "@/pages/admin/Calendar";
 import BatchManagement from "@/pages/admin/BatchManagement";
@@ -21,6 +22,7 @@ import MyExams from "@/pages/candidate/MyExams";
 import Results from "@/pages/candidate/Results";
 import Profile from "@/pages/candidate/Profile";
 import ExamInterface from "@/pages/exam/ExamInterface";
+import ExamSubmissionSuccess from "@/pages/exam/ExamSubmissionSuccess";
 import IDVerificationPage from "@/pages/candidate/IDVerificationPage";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +43,7 @@ const App = () => (
           <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AppLayout><AdminDashboard /></AppLayout></ProtectedRoute>} />
           <Route path="/admin/questions" element={<ProtectedRoute requiredRole="admin"><AppLayout><QuestionBank /></AppLayout></ProtectedRoute>} />
           <Route path="/admin/exams" element={<ProtectedRoute requiredRole="admin"><AppLayout><ExamManagement /></AppLayout></ProtectedRoute>} />
+          <Route path="/admin/create-exam" element={<ProtectedRoute requiredRole="admin"><AppLayout><CreateExam /></AppLayout></ProtectedRoute>} />
           <Route path="/admin/candidates" element={<ProtectedRoute requiredRole="admin"><AppLayout><CandidateManagement /></AppLayout></ProtectedRoute>} />
           <Route path="/admin/batches" element={<ProtectedRoute requiredRole="admin"><AppLayout><BatchManagement /></AppLayout></ProtectedRoute>} />
           <Route path="/admin/calendar" element={<ProtectedRoute requiredRole="admin"><AppLayout><Calendar /></AppLayout></ProtectedRoute>} />
@@ -58,7 +61,8 @@ const App = () => (
           <Route path="/verify/:examId" element={<IDVerificationPage />} />
           
           {/* Exam Taking */}
-          <Route path="/exam/:examId" element={<ExamInterface examId="e1" />} />
+          <Route path="/exam/:examId" element={<ExamInterface />} />
+          <Route path="/exam/:examId/success" element={<ExamSubmissionSuccess />} />
           
           {/* Fallback */}
           <Route path="*" element={<NotFound />} />

@@ -81,12 +81,13 @@ export default function Reports() {
   };
 
   const topPerformers = [
-    { name: 'Emily Davis', avgScore: 94, examsCompleted: 8, rank: 1 },
-    { name: 'John Smith', avgScore: 89, examsCompleted: 6, rank: 2 },
-    { name: 'Michael Brown', avgScore: 87, examsCompleted: 7, rank: 3 },
-    { name: 'Sarah Wilson', avgScore: 85, examsCompleted: 9, rank: 4 },
-    { name: 'David Johnson', avgScore: 82, examsCompleted: 5, rank: 5 }
+    { name: 'Priya Iyer', avgScore: 94, examsCompleted: 8, rank: 1 },
+    { name: 'Amit Sharma', avgScore: 89, examsCompleted: 6, rank: 2 },
+    { name: 'Rohit Verma', avgScore: 87, examsCompleted: 7, rank: 3 },
+    { name: 'Neha Reddy', avgScore: 85, examsCompleted: 9, rank: 4 },
+    { name: 'Sandeep Kulkarni', avgScore: 82, examsCompleted: 5, rank: 5 }
   ];
+  
 
   const exportReport = (format: 'pdf' | 'csv' | 'excel') => {
     console.log(`Exporting report as ${format}`);

@@ -36,7 +36,7 @@ export default function ProctoringManagement() {
     {
       id: 'v1',
       candidateId: '2',
-      candidateName: 'John Smith',
+      candidateName: 'Amit Sharma',
       examId: 'e1',
       examTitle: 'General Knowledge Assessment',
       type: 'tab_switch',
@@ -49,7 +49,7 @@ export default function ProctoringManagement() {
     {
       id: 'v2',
       candidateId: '3',
-      candidateName: 'Emily Davis',
+      candidateName: 'Priya Iyer',
       examId: 'e1',
       examTitle: 'General Knowledge Assessment',
       type: 'face_not_detected',
@@ -62,7 +62,7 @@ export default function ProctoringManagement() {
     {
       id: 'v3',
       candidateId: '4',
-      candidateName: 'Michael Brown',
+      candidateName: 'Rohit Verma',
       examId: 'e1',
       examTitle: 'General Knowledge Assessment',
       type: 'multiple_faces',
@@ -75,7 +75,7 @@ export default function ProctoringManagement() {
     {
       id: 'v4',
       candidateId: '2',
-      candidateName: 'John Smith',
+      candidateName: 'Amit Sharma',
       examId: 'e1',
       examTitle: 'General Knowledge Assessment',
       type: 'suspicious_activity',
@@ -86,6 +86,7 @@ export default function ProctoringManagement() {
       status: 'dismissed'
     }
   ];
+  
 
   const activeMonitoring = [
     {
