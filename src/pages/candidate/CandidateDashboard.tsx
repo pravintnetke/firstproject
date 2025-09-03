@@ -10,9 +10,13 @@ import {
   User,
   Award,
   Calendar,
-  Eye
+  Eye,
+  RefreshCw,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { sampleExams, sampleResults, sampleUsers } from '@/data/sampleData';
+import { useSystemCheck } from '@/hooks/use-system-check';
 
 export default function CandidateDashboard() {
   // In real app, get current candidate from auth context
@@ -23,6 +27,9 @@ export default function CandidateDashboard() {
   const candidateResults = sampleResults.filter(result => 
     result.candidateId === currentCandidate?.id
   );
+
+  // System requirements check
+  const { systemCheck, refreshCheck } = useSystemCheck();
 
   const upcomingExams = assignedExams.filter(exam => 
     exam.status === 'published' && new Date(exam.startDate) > new Date()
@@ -248,44 +255,115 @@ export default function CandidateDashboard() {
       </div>
 
       {/* System Requirements Check */}
-      <Card className="dashboard-card">
+      <Card className={`dashboard-card ${
+        systemCheck.overall === 'failed' ? 'border-destructive/50 bg-destructive/5' :
+        systemCheck.overall === 'issues' ? 'border-warning/50 bg-warning/5' :
+        systemCheck.overall === 'ready' ? 'border-success/50 bg-success/5' :
+        'border-muted'
+      }`}>
         <CardHeader>
-          <CardTitle>System Requirements</CardTitle>
-          <CardDescription>
-            Ensure your system is ready for proctored exams
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                {systemCheck.overall === 'checking' && <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />}
+                {systemCheck.overall === 'ready' && <CheckCircle className="h-5 w-5 text-success" />}
+                {systemCheck.overall === 'issues' && <AlertTriangle className="h-5 w-5 text-warning" />}
+                {systemCheck.overall === 'failed' && <XCircle className="h-5 w-5 text-destructive" />}
+                System Requirements
+              </CardTitle>
+              <CardDescription>
+                {systemCheck.overall === 'checking' && 'Checking your system for proctored exams...'}
+                {systemCheck.overall === 'ready' && 'Your system is ready for proctored exams'}
+                {systemCheck.overall === 'issues' && 'Some issues detected - exams may still work'}
+                {systemCheck.overall === 'failed' && 'Critical issues found - please resolve before taking exams'}
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshCheck}
+              disabled={systemCheck.overall === 'checking'}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${systemCheck.overall === 'checking' ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg border">
-              <CheckCircle className="h-5 w-5 text-success" />
-              <div>
-                <p className="text-sm font-medium">Browser</p>
-                <p className="text-xs text-muted-foreground">Chrome (Compatible)</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg border">
-              <CheckCircle className="h-5 w-5 text-success" />
-              <div>
-                <p className="text-sm font-medium">Camera</p>
-                <p className="text-xs text-muted-foreground">Working</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg border">
-              <CheckCircle className="h-5 w-5 text-success" />
-              <div>
-                <p className="text-sm font-medium">Microphone</p>
-                <p className="text-xs text-muted-foreground">Working</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg border">
-              <CheckCircle className="h-5 w-5 text-success" />
-              <div>
-                <p className="text-sm font-medium">Internet</p>
-                <p className="text-xs text-muted-foreground">Stable (50 Mbps)</p>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(systemCheck).filter(([key]) => key !== 'overall').map(([key, requirement]) => {
+              const getIcon = () => {
+                switch (requirement.status) {
+                  case 'checking':
+                    return <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />;
+                  case 'passed':
+                    return <CheckCircle className="h-5 w-5 text-success" />;
+                  case 'warning':
+                    return <AlertTriangle className="h-5 w-5 text-warning" />;
+                  case 'failed':
+                    return <XCircle className="h-5 w-5 text-destructive" />;
+                  default:
+                    return <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />;
+                }
+              };
+
+              const getBorderColor = () => {
+                switch (requirement.status) {
+                  case 'passed':
+                    return 'border-success/30';
+                  case 'warning':
+                    return 'border-warning/30';
+                  case 'failed':
+                    return 'border-destructive/30';
+                  default:
+                    return 'border-muted';
+                }
+              };
+
+              return (
+                <div key={key} className={`flex items-start gap-3 p-3 rounded-lg border ${getBorderColor()}`}>
+                  {getIcon()}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{requirement.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{requirement.message}</p>
+                    {requirement.details && (
+                      <p className="text-xs text-muted-foreground/80 mt-1 leading-tight">
+                        {requirement.details}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+          
+          {systemCheck.overall === 'failed' && (
+            <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-destructive">Action Required</p>
+                  <p className="text-muted-foreground">
+                    Please resolve the failed requirements above before attempting to take any proctored exams.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {systemCheck.overall === 'issues' && (
+            <div className="mt-4 p-3 rounded-lg bg-warning/10 border border-warning/20">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-warning">Minor Issues Detected</p>
+                  <p className="text-muted-foreground">
+                    Your system should work for most exams, but you may experience some limitations.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

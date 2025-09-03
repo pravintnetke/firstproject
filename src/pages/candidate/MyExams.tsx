@@ -17,22 +17,21 @@ import {
   Shield,
   Play,
   Eye,
-  Download
+  Download,
+  RefreshCw,
+  XCircle,
+  Globe
 } from 'lucide-react';
 import { sampleExams, sampleUsers } from '@/data/sampleData';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSystemCheck } from '@/hooks/use-system-check';
 import { format } from 'date-fns';
 
 export default function MyExams() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showSystemCheck, setShowSystemCheck] = useState(false);
-  const [systemCheckResults, setSystemCheckResults] = useState({
-    camera: 'checking',
-    microphone: 'checking',
-    browser: 'passed',
-    internet: 'passed'
-  });
+  const { systemCheck, refreshCheck } = useSystemCheck();
 
   // Get current authenticated user's exams
   const myExams = sampleExams.filter(exam => 
@@ -54,33 +53,31 @@ export default function MyExams() {
 
   const runSystemCheck = () => {
     setShowSystemCheck(true);
-    
-    // Simulate system checks
-    setSystemCheckResults({
-      camera: 'checking',
-      microphone: 'checking',
-      browser: 'passed',
-      internet: 'passed'
-    });
-
-    // Simulate system checks
-    setTimeout(() => {
-      setSystemCheckResults(prev => ({
-        ...prev,
-        camera: Math.random() > 0.3 ? 'passed' : 'failed'
-      }));
-    }, 1000);
-
-    setTimeout(() => {
-      setSystemCheckResults(prev => ({
-        ...prev,
-        microphone: Math.random() > 0.2 ? 'passed' : 'failed'
-      }));
-    }, 1500);
+    refreshCheck();
   };
 
   const handleStartExam = (examId: string) => {
+    // Check if system requirements are met for proctored exams
+    const exam = myExams.find(e => e.id === examId);
+    if (exam?.proctoringEnabled && !isSystemReady()) {
+      setShowSystemCheck(true);
+      refreshCheck();
+      return;
+    }
     navigate(`/exam/${examId}`);
+  };
+
+  const isSystemReady = () => {
+    return systemCheck.overall === 'ready' || systemCheck.overall === 'checking';
+  };
+
+  const getSystemIssues = () => {
+    const issues = [];
+    if (systemCheck.camera.status === 'failed') issues.push('Camera access required');
+    if (systemCheck.microphone.status === 'failed') issues.push('Microphone access required');
+    if (systemCheck.browser.status === 'failed') issues.push('Browser not compatible');
+    if (systemCheck.internet.status === 'failed') issues.push('Internet connection issues');
+    return issues;
   };
 
   const handleViewResult = () => {
@@ -90,8 +87,9 @@ export default function MyExams() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'passed': return <CheckCircle className="h-4 w-4 text-success" />;
-      case 'failed': return <AlertTriangle className="h-4 w-4 text-destructive" />;
-      case 'checking': return <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />;
+      case 'failed': return <XCircle className="h-4 w-4 text-destructive" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-warning" />;
+      case 'checking': return <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />;
       default: return <AlertTriangle className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -182,9 +180,13 @@ export default function MyExams() {
                 <Button variant="outline" onClick={runSystemCheck}>
                   System Check
                 </Button>
-                <Button className="bg-gradient-primary" onClick={() => handleStartExam(exam.id)}>
+                <Button 
+                  className={`bg-gradient-primary ${!isSystemReady() && exam.proctoringEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => handleStartExam(exam.id)}
+                  disabled={!isSystemReady() && exam.proctoringEnabled}
+                >
                   <Play className="mr-2 h-4 w-4" />
-                  Start Exam
+                  {!isSystemReady() && exam.proctoringEnabled ? 'System Check Required' : 'Start Exam'}
                 </Button>
               </>
             )}
@@ -298,44 +300,119 @@ export default function MyExams() {
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Camera className="h-5 w-5 text-muted-foreground" />
-                <span>Camera Access</span>
+            <div className={`flex items-start justify-between p-3 rounded-lg border ${
+              systemCheck.camera.status === 'passed' ? 'border-success/30 bg-success/5' :
+              systemCheck.camera.status === 'failed' ? 'border-destructive/30 bg-destructive/5' :
+              systemCheck.camera.status === 'warning' ? 'border-warning/30 bg-warning/5' :
+              'border-muted'
+            }`}>
+              <div className="flex items-start gap-3">
+                <Camera className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Camera Access</p>
+                  <p className="text-sm text-muted-foreground">{systemCheck.camera.message}</p>
+                  {systemCheck.camera.details && (
+                    <p className="text-xs text-muted-foreground/80 mt-1">{systemCheck.camera.details}</p>
+                  )}
+                </div>
               </div>
-              {getStatusIcon(systemCheckResults.camera)}
+              {getStatusIcon(systemCheck.camera.status)}
             </div>
             
-            <div className="flex items-center justify-between p-3 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Mic className="h-5 w-5 text-muted-foreground" />
-                <span>Microphone Access</span>
+            <div className={`flex items-start justify-between p-3 rounded-lg border ${
+              systemCheck.microphone.status === 'passed' ? 'border-success/30 bg-success/5' :
+              systemCheck.microphone.status === 'failed' ? 'border-destructive/30 bg-destructive/5' :
+              systemCheck.microphone.status === 'warning' ? 'border-warning/30 bg-warning/5' :
+              'border-muted'
+            }`}>
+              <div className="flex items-start gap-3">
+                <Mic className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Microphone Access</p>
+                  <p className="text-sm text-muted-foreground">{systemCheck.microphone.message}</p>
+                  {systemCheck.microphone.details && (
+                    <p className="text-xs text-muted-foreground/80 mt-1">{systemCheck.microphone.details}</p>
+                  )}
+                </div>
               </div>
-              {getStatusIcon(systemCheckResults.microphone)}
+              {getStatusIcon(systemCheck.microphone.status)}
             </div>
             
-            <div className="flex items-center justify-between p-3 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Monitor className="h-5 w-5 text-muted-foreground" />
-                <span>Browser Compatibility</span>
+            <div className={`flex items-start justify-between p-3 rounded-lg border ${
+              systemCheck.browser.status === 'passed' ? 'border-success/30 bg-success/5' :
+              systemCheck.browser.status === 'failed' ? 'border-destructive/30 bg-destructive/5' :
+              systemCheck.browser.status === 'warning' ? 'border-warning/30 bg-warning/5' :
+              'border-muted'
+            }`}>
+              <div className="flex items-start gap-3">
+                <Monitor className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Browser Compatibility</p>
+                  <p className="text-sm text-muted-foreground">{systemCheck.browser.message}</p>
+                  {systemCheck.browser.details && (
+                    <p className="text-xs text-muted-foreground/80 mt-1">{systemCheck.browser.details}</p>
+                  )}
+                </div>
               </div>
-              {getStatusIcon(systemCheckResults.browser)}
+              {getStatusIcon(systemCheck.browser.status)}
             </div>
             
-            <div className="flex items-center justify-between p-3 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-muted-foreground" />
-                <span>Internet Connection</span>
+            <div className={`flex items-start justify-between p-3 rounded-lg border ${
+              systemCheck.internet.status === 'passed' ? 'border-success/30 bg-success/5' :
+              systemCheck.internet.status === 'failed' ? 'border-destructive/30 bg-destructive/5' :
+              systemCheck.internet.status === 'warning' ? 'border-warning/30 bg-warning/5' :
+              'border-muted'
+            }`}>
+              <div className="flex items-start gap-3">
+                <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Internet Connection</p>
+                  <p className="text-sm text-muted-foreground">{systemCheck.internet.message}</p>
+                  {systemCheck.internet.details && (
+                    <p className="text-xs text-muted-foreground/80 mt-1">{systemCheck.internet.details}</p>
+                  )}
+                </div>
               </div>
-              {getStatusIcon(systemCheckResults.internet)}
+              {getStatusIcon(systemCheck.internet.status)}
             </div>
           </div>
+          
+          {(systemCheck.overall === 'failed' || systemCheck.overall === 'issues') && (
+            <div className={`p-3 rounded-lg border mt-4 ${
+              systemCheck.overall === 'failed' ? 'border-destructive/30 bg-destructive/5' : 'border-warning/30 bg-warning/5'
+            }`}>
+              <div className="flex items-start gap-2">
+                {systemCheck.overall === 'failed' ? (
+                  <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                )}
+                <div className="text-sm">
+                  <p className={`font-medium ${
+                    systemCheck.overall === 'failed' ? 'text-destructive' : 'text-warning'
+                  }`}>
+                    {systemCheck.overall === 'failed' ? 'System Not Ready' : 'Minor Issues Detected'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {systemCheck.overall === 'failed' 
+                      ? 'Please resolve the failed requirements before taking proctored exams.'
+                      : 'Your system should work for most exams, but you may experience some limitations.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setShowSystemCheck(false)}>
               Close
             </Button>
-            <Button onClick={runSystemCheck}>
+            <Button 
+              onClick={refreshCheck}
+              disabled={systemCheck.overall === 'checking'}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${systemCheck.overall === 'checking' ? 'animate-spin' : ''}`} />
               Retry Check
             </Button>
           </div>

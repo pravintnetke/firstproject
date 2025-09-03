@@ -18,9 +18,12 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
-  Send
+  Send,
+  XCircle
 } from 'lucide-react';
 import { sampleExams, sampleQuestions } from '@/data/sampleData';
+import { useProctoringMonitor } from '@/hooks/use-proctoring-monitor';
+import ViolationModal from '@/components/exam/ViolationModal';
 
 export default function ExamInterface() {
   const { examId } = useParams<{ examId: string }>();
@@ -41,6 +44,34 @@ export default function ExamInterface() {
   const exam = sampleExams.find(e => e.id === examId) || sampleExams[0];
   const questions = exam.questions;
   const currentQuestion = questions[currentQuestionIndex];
+  const isProctoredExam = exam.proctoringEnabled;
+
+  // Proctoring monitor for proctored exams
+  const {
+    proctoringStatus: monitorStatus,
+    showViolationModal,
+    currentViolation,
+    startProctoring,
+    stopProctoring,
+    dismissViolation,
+    getViolationsByType,
+    getRemainingWarnings,
+    maxWarnings
+  } = useProctoringMonitor(examId || '', isProctoredExam);
+
+
+  // Initialize proctoring for proctored exams
+  useEffect(() => {
+    if (isProctoredExam) {
+      startProctoring();
+    }
+
+    return () => {
+      if (isProctoredExam) {
+        stopProctoring();
+      }
+    };
+  }, [isProctoredExam, startProctoring, stopProctoring]);
 
   // Timer countdown
   useEffect(() => {
@@ -56,6 +87,13 @@ export default function ExamInterface() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Handle exam termination due to violations
+  useEffect(() => {
+    if (monitorStatus.isExamTerminated) {
+      handleSubmitExam();
+    }
+  }, [monitorStatus.isExamTerminated]);
 
   // Simulate proctoring status changes
   useEffect(() => {
@@ -113,11 +151,21 @@ export default function ExamInterface() {
 
   const handleSubmitExam = async () => {
     setIsSubmitting(true);
+    
+    // Stop proctoring
+    if (isProctoredExam) {
+      stopProctoring();
+    }
+    
     // Simulate submission delay
     setTimeout(() => {
       setIsSubmitting(false);
       navigate(`/exam/${examId}/success`);
     }, 2000);
+  };
+
+  const handleExamTermination = () => {
+    navigate('/candidate/my-exams');
   };
 
   const getQuestionStatus = (questionId: string, index: number) => {
@@ -154,11 +202,18 @@ export default function ExamInterface() {
           
           <div className="flex items-center gap-4">
             {/* Proctoring Status */}
-            <div className="flex items-center gap-2">
-              <Camera className={`h-4 w-4 ${proctoringStatus.camera ? 'text-success' : 'text-destructive'}`} />
-              <Mic className={`h-4 w-4 ${proctoringStatus.microphone ? 'text-success' : 'text-destructive'}`} />
-              <Shield className={`h-4 w-4 ${proctoringStatus.screenRecording ? 'text-success' : 'text-destructive'}`} />
-            </div>
+            {isProctoredExam && (
+              <div className="flex items-center gap-2">
+                <Camera className={`h-4 w-4 ${proctoringStatus.camera ? 'text-success' : 'text-destructive'}`} />
+                <Mic className={`h-4 w-4 ${proctoringStatus.microphone ? 'text-success' : 'text-destructive'}`} />
+                <Shield className={`h-4 w-4 ${monitorStatus.isActive ? 'text-success' : 'text-destructive'}`} />
+                {monitorStatus.warningCount > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    {monitorStatus.warningCount}/{maxWarnings} warnings
+                  </Badge>
+                )}
+              </div>
+            )}
             
             {/* Timer */}
             <div className="flex items-center gap-2">
@@ -296,38 +351,69 @@ export default function ExamInterface() {
         {/* Navigation Palette */}
         <div className="w-80 border-l bg-muted/30 p-4 overflow-y-auto">
           {/* Proctoring Status */}
-          <Card className="mb-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Proctoring Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Face Detection</span>
-                {proctoringStatus.faceDetected ? (
-                  <CheckCircle className="h-4 w-4 text-success" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                )}
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Screen Recording</span>
-                <CheckCircle className="h-4 w-4 text-success" />
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Audio Monitoring</span>
-                <CheckCircle className="h-4 w-4 text-success" />
-              </div>
-              
-              {!proctoringStatus.faceDetected && (
-                <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive">
-                  Face not detected. Please ensure you are visible to the camera.
+          {isProctoredExam && (
+            <Card className="mb-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Proctoring Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Monitoring Active</span>
+                  {monitorStatus.isActive ? (
+                    <CheckCircle className="h-4 w-4 text-success" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Face Detection</span>
+                  {proctoringStatus.faceDetected ? (
+                    <CheckCircle className="h-4 w-4 text-success" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Screen Recording</span>
+                  <CheckCircle className="h-4 w-4 text-success" />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Audio Monitoring</span>
+                  <CheckCircle className="h-4 w-4 text-success" />
+                </div>
+                
+                {/* Violation Summary */}
+                {monitorStatus.violations.length > 0 && (
+                  <div className="mt-3 p-2 bg-warning/10 rounded">
+                    <div className="text-xs font-medium text-warning mb-1">
+                      Violations Detected: {monitorStatus.violations.length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Tab switches: {getViolationsByType('tab_switch').length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Warnings: {monitorStatus.warningCount}/{maxWarnings}
+                    </div>
+                  </div>
+                )}
+                
+                {!proctoringStatus.faceDetected && (
+                  <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive">
+                    Face not detected. Please ensure you are visible to the camera.
+                  </div>
+                )}
+                
+                {monitorStatus.isExamTerminated && (
+                  <div className="mt-2 p-2 bg-destructive/20 rounded text-xs text-destructive font-medium">
+                    Exam terminated due to violations
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           
           {/* Question Palette */}
           <Card>
@@ -393,6 +479,17 @@ export default function ExamInterface() {
           </Card>
         </div>
       </div>
+
+      {/* Violation Modal */}
+      <ViolationModal
+        isOpen={showViolationModal}
+        violation={currentViolation}
+        remainingWarnings={getRemainingWarnings()}
+        maxWarnings={maxWarnings}
+        isExamTerminated={monitorStatus.isExamTerminated}
+        onDismiss={dismissViolation}
+        onTerminateExam={handleExamTermination}
+      />
     </div>
   );
 }
