@@ -550,6 +550,25 @@ export const sampleBatches: Batch[] = [
 // END-TO-END COMPLETE EXAM SCENARIO
 export const sampleExams: Exam[] = [
   {
+    id: 'linguaskill_001',
+    title: 'Linguaskill General English Test',
+    description: 'Comprehensive English language assessment with Reading, Listening, Writing, and Speaking modules',
+    subject: 'English Language',
+    duration: 180, // 3 hours total
+    totalMarks: 180,
+    passingMarks: 100,
+    negativeMarking: false,
+    randomizeQuestions: false,
+    proctoringEnabled: true,
+    status: 'published',
+    startDate: '2024-12-15T04:00:00Z',
+    endDate: '2025-12-15T12:00:00Z',
+    questions: [], // Linguaskill uses its own question system
+    assignedCandidates: ['3', '4', '5', '6', '7'],
+    examType: 'competitive',
+    board: 'University'
+  },
+  {
     id: 'e1',
     title: 'JEE Mains 2025 Mock Test - Paper 1',
     description: 'Full-length mock test for JEE Mains 2025 with Physics, Chemistry, and Mathematics',
@@ -562,7 +581,7 @@ export const sampleExams: Exam[] = [
     proctoringEnabled: true,
     status: 'published',
     startDate: '2025-09-03T04:00:00Z', // 9:30 AM IST (currently active)
-    endDate: '2025-09-03T12:00:00Z', // 5:30 PM IST (ends today)
+    endDate: '2025-11-03T12:00:00Z', // 5:30 PM IST (ends today)
     questions: sampleQuestions.slice(0, 8),
     assignedCandidates: ['3', '4', '5', '6', '7'],
     examType: 'entrance',

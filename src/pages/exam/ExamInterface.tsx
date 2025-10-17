@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Clock, 
@@ -19,17 +20,30 @@ import {
   AlertTriangle,
   CheckCircle,
   Send,
-  XCircle
+  XCircle,
+  Volume2,
+  MicIcon,
+  Play,
+  Pause,
+  RotateCcw,
+  BookOpen,
+  Headphones,
+  PenTool,
+  MessageSquare
 } from 'lucide-react';
 import { sampleExams, sampleQuestions } from '@/data/sampleData';
+import { sampleLinguaskillTest, sampleTestSession, sampleLinguaskillQuestions } from '@/data/linguaskillData';
+import { LinguaskillModule, TestSession, LinguaskillTest } from '@/types/linguaskill';
 import { useProctoringMonitor } from '@/hooks/use-proctoring-monitor';
 import ViolationModal from '@/components/exam/ViolationModal';
+import LinguaskillPreTest from '@/components/exam/LinguaskillPreTest';
+import LinguaskillModuleInterface from '@/components/exam/LinguaskillModuleInterface';
 
 export default function ExamInterface() {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | number>>({});
+  const [answers, setAnswers] = useState<Record<string, string | number | string[]>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,12 +53,26 @@ export default function ExamInterface() {
     screenRecording: true,
     faceDetected: true
   });
+  
+  // Linguaskill-specific state
+  const [isLinguaskillTest, setIsLinguaskillTest] = useState(false);
+  const [testSession, setTestSession] = useState<TestSession | null>(null);
+  const [currentModule, setCurrentModule] = useState<LinguaskillModule | null>(null);
+  const [preTestCompleted, setPreTestCompleted] = useState(false);
 
   // Get exam data (in real app, fetch from API)
   const exam = sampleExams.find(e => e.id === examId) || sampleExams[0];
   const questions = exam.questions;
   const currentQuestion = questions[currentQuestionIndex];
   const isProctoredExam = exam.proctoringEnabled;
+  
+  // Check if this is a Linguaskill test
+  useEffect(() => {
+    if (examId === 'linguaskill_001' || exam.title.toLowerCase().includes('linguaskill')) {
+      setIsLinguaskillTest(true);
+      setTestSession(sampleTestSession);
+    }
+  }, [examId, exam.title]);
 
   // Proctoring monitor for proctored exams
   const {
@@ -118,14 +146,21 @@ export default function ExamInterface() {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerChange = (value: string | number) => {
+  const handleAnswerChange = (value: string | number | string[], questionId?: string) => {
+    // For Linguaskill tests, use the provided questionId
+    // For regular exams, use currentQuestion.id
+    const id = questionId || (currentQuestion ? currentQuestion.id : null);
+    if (!id) return;
+    
+    console.log('Answer changed:', { id, value }); // Debug log
     setAnswers(prev => ({
       ...prev,
-      [currentQuestion.id]: value
+      [id]: value
     }));
   };
 
   const handleFlagQuestion = () => {
+    if (!currentQuestion) return;
     setFlaggedQuestions(prev => {
       const newSet = new Set(prev);
       if (newSet.has(currentQuestion.id)) {
@@ -187,6 +222,155 @@ export default function ExamInterface() {
       default: return 'bg-muted text-muted-foreground';
     }
   };
+
+  // Handle Linguaskill pre-test completion
+  const handlePreTestComplete = () => {
+    setPreTestCompleted(true);
+  };
+
+  // Handle module selection
+  const handleModuleStart = (module: LinguaskillModule) => {
+    setCurrentModule(module);
+  };
+
+  // Handle module completion
+  const handleModuleComplete = () => {
+    setCurrentModule(null);
+    // Update test session status
+  };
+
+  // Render Linguaskill interface if it's a Linguaskill test
+  if (isLinguaskillTest) {
+    if (!preTestCompleted) {
+      return (
+        <LinguaskillPreTest
+          testSession={testSession!}
+          onComplete={handlePreTestComplete}
+        />
+      );
+    }
+
+    if (currentModule) {
+      return (
+        <LinguaskillModuleInterface
+          module={currentModule}
+          testSession={testSession!}
+          onComplete={handleModuleComplete}
+          onBack={() => setCurrentModule(null)}
+        />
+      );
+    }
+
+    // Module selection dashboard
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Linguaskill Test Platform</h1>
+            <p className="text-gray-600">Select a module to begin your test</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Reading Module */}
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleModuleStart('reading')}>
+              <CardHeader className="text-center">
+                <BookOpen className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                <CardTitle className="text-xl">Reading</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-sm text-gray-600 mb-4">Maximum 59 minutes</p>
+                <p className="text-xs text-gray-500 mb-4">Adaptive test with various question types</p>
+                <Badge variant="outline" className="mb-2">Not Started</Badge>
+                <Button className="w-full" size="sm">
+                  Start Module
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Listening Module */}
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleModuleStart('listening')}>
+              <CardHeader className="text-center">
+                <Headphones className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                <CardTitle className="text-xl">Listening</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-sm text-gray-600 mb-4">Maximum 59 minutes</p>
+                <p className="text-xs text-gray-500 mb-4">Audio recordings can be played twice</p>
+                <Badge variant="outline" className="mb-2">Not Started</Badge>
+                <Button className="w-full" size="sm">
+                  Start Module
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Writing Module */}
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleModuleStart('writing')}>
+              <CardHeader className="text-center">
+                <PenTool className="h-12 w-12 text-purple-600 mx-auto mb-2" />
+                <CardTitle className="text-xl">Writing</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-sm text-gray-600 mb-4">45 minutes</p>
+                <p className="text-xs text-gray-500 mb-4">Single writing task with word counter</p>
+                <Badge variant="outline" className="mb-2">Not Started</Badge>
+                <Button className="w-full" size="sm">
+                  Start Module
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Speaking Module */}
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleModuleStart('speaking')}>
+              <CardHeader className="text-center">
+                <MessageSquare className="h-12 w-12 text-orange-600 mx-auto mb-2" />
+                <CardTitle className="text-xl">Speaking</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-sm text-gray-600 mb-4">Approximately 16 minutes</p>
+                <p className="text-xs text-gray-500 mb-4">4 parts with recording and playback</p>
+                <Badge variant="outline" className="mb-2">Not Started</Badge>
+                <Button className="w-full" size="sm">
+                  Start Module
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-8 text-center">
+            <Card className="max-w-2xl mx-auto">
+              <CardHeader>
+                <CardTitle className="text-lg">Test Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div className="text-center">
+                    <div className="font-semibold">Reading</div>
+                    <div className="text-gray-500">Not Started</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold">Listening</div>
+                    <div className="text-gray-500">Not Started</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold">Writing</div>
+                    <div className="text-gray-500">Not Started</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold">Speaking</div>
+                    <div className="text-gray-500">Not Started</div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Progress value={0} className="h-2" />
+                  <p className="text-xs text-gray-500 mt-1">Overall Progress: 0%</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="exam-interface">
@@ -251,26 +435,37 @@ export default function ExamInterface() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   Question {currentQuestionIndex + 1}
-                  {flaggedQuestions.has(currentQuestion.id) && (
+                  {currentQuestion && flaggedQuestions.has(currentQuestion.id) && (
                     <Flag className="h-4 w-4 text-warning fill-current" />
                   )}
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{currentQuestion.difficulty}</Badge>
-                  <Badge variant="secondary">{currentQuestion.marks} marks</Badge>
+                  {currentQuestion && (
+                    <>
+                      <Badge variant="outline">{currentQuestion.difficulty}</Badge>
+                      <Badge variant="secondary">{currentQuestion.marks} marks</Badge>
+                    </>
+                  )}
                 </div>
               </div>
             </CardHeader>
             
             <CardContent className="space-y-6">
               {/* Question Text */}
-              <div className="text-lg leading-relaxed">
-                {currentQuestion.text}
-              </div>
+              {currentQuestion ? (
+                <div className="text-lg leading-relaxed">
+                  {currentQuestion.text}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No question available</p>
+                </div>
+              )}
               
               {/* Answer Options */}
-              <div className="space-y-4">
-                {currentQuestion.type === 'mcq' && currentQuestion.options && (
+              {currentQuestion && (
+                <div className="space-y-4">
+                  {currentQuestion.type === 'mcq' && currentQuestion.options && (
                   <RadioGroup
                     value={answers[currentQuestion.id]?.toString() || ''}
                     onValueChange={(value) => handleAnswerChange(parseInt(value))}
@@ -310,18 +505,20 @@ export default function ExamInterface() {
                     className="min-h-[200px]"
                   />
                 )}
-              </div>
+                </div>
+              )}
               
               {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleFlagQuestion}
-                    className={flaggedQuestions.has(currentQuestion.id) ? 'bg-warning/10 border-warning' : ''}
-                  >
+              {currentQuestion && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleFlagQuestion}
+                      className={currentQuestion && flaggedQuestions.has(currentQuestion.id) ? 'bg-warning/10 border-warning' : ''}
+                    >
                     <Flag className="mr-2 h-4 w-4" />
-                    {flaggedQuestions.has(currentQuestion.id) ? 'Unflag' : 'Flag for Review'}
+                    {currentQuestion && flaggedQuestions.has(currentQuestion.id) ? 'Unflag' : 'Flag for Review'}
                   </Button>
                 </div>
                 
@@ -343,7 +540,8 @@ export default function ExamInterface() {
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
