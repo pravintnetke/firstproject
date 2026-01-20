@@ -32,7 +32,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { sampleExams, sampleQuestions } from '@/data/sampleData';
-import { sampleLinguaskillTest, sampleTestSession, sampleLinguaskillQuestions } from '@/data/linguaskillData';
+import { sampleLinguaskillTest, sampleTestSession, sampleLinguaskillQuestions, alJameaGrade6Test, alJameaGrade6Questions } from '@/data/linguaskillData';
 import { LinguaskillModule, TestSession, LinguaskillTest } from '@/types/linguaskill';
 import { useProctoringMonitor } from '@/hooks/use-proctoring-monitor';
 import ViolationModal from '@/components/exam/ViolationModal';
@@ -68,9 +68,34 @@ export default function ExamInterface() {
   
   // Check if this is a Linguaskill test
   useEffect(() => {
-    if (examId === 'linguaskill_001' || exam.title.toLowerCase().includes('linguaskill')) {
+    if (examId === 'linguaskill_001' || examId === 'linguaskill_aljamea_grade6' || exam.title.toLowerCase().includes('linguaskill') || exam.title.toLowerCase().includes('al jamea')) {
       setIsLinguaskillTest(true);
-      setTestSession(sampleTestSession);
+      
+      // Load appropriate test session based on exam ID
+      if (examId === 'linguaskill_aljamea_grade6') {
+        const alJameaSession: TestSession = {
+          ...sampleTestSession,
+          testId: 'linguaskill_aljamea_grade6',
+          moduleAttempts: {
+            ...sampleTestSession.moduleAttempts,
+            listening: {
+              moduleId: 'listening',
+              startTime: '',
+              questions: alJameaGrade6Questions.filter(q => q.module === 'listening'),
+              responses: {}
+            },
+            speaking: {
+              moduleId: 'speaking',
+              startTime: '',
+              questions: alJameaGrade6Questions.filter(q => q.module === 'speaking'),
+              responses: {}
+            }
+          }
+        };
+        setTestSession(alJameaSession);
+      } else {
+        setTestSession(sampleTestSession);
+      }
     }
   }, [examId, exam.title]);
 

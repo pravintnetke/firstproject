@@ -72,6 +72,18 @@ export default function LinguaskillModuleInterface({
   const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
+  // Load voices for speech synthesis
+  useEffect(() => {
+    // Load voices when component mounts
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      // Some browsers need this event to load voices
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
+
   // Get questions for current module
   const questions = sampleLinguaskillQuestions.filter(q => q.module === module);
   const currentQuestion = questions[currentQuestionIndex];
@@ -170,51 +182,101 @@ export default function LinguaskillModuleInterface({
   };
 
   const handleAudioPlay = () => {
-    if (audioRef.current && playCount < 2) {
+    if (playCount < 2) {
       if (isPlaying) {
-        audioRef.current.pause();
+        // Stop any playing audio or speech
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        window.speechSynthesis.cancel();
         setIsPlaying(false);
       } else {
-        // Create a test tone if no audio file exists
-        if (!currentQuestion.audioUrl || currentQuestion.audioUrl.includes('/audio/')) {
-          // Generate test audio using Web Audio API
-          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
-          
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          
-          // Create a more complex tone sequence for listening test
-          oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
-          oscillator.frequency.setValueAtTime(523, audioContext.currentTime + 0.5); // C5 note
-          oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 1.0); // E5 note
-          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-          
-          setIsPlaying(true);
-          setPlayCount(prev => prev + 1);
-          
-          oscillator.start();
-          
-          // Play for 3 seconds
-          setTimeout(() => {
-            oscillator.stop();
-            audioContext.close();
-            setIsPlaying(false);
-          }, 3000);
+        // Check if audio file exists
+        if (currentQuestion.audioUrl && !currentQuestion.audioUrl.includes('/audio/')) {
+          // Play actual audio file
+          if (audioRef.current) {
+            audioRef.current.play().then(() => {
+              setIsPlaying(true);
+              if (audioRef.current!.currentTime === 0) {
+                setPlayCount(prev => prev + 1);
+              }
+            }).catch(() => {
+              console.error('Audio playback failed');
+              setIsPlaying(false);
+            });
+          }
         } else {
-          audioRef.current.play().then(() => {
-            setIsPlaying(true);
-            if (audioRef.current!.currentTime === 0) {
-              setPlayCount(prev => prev + 1);
+          // Use Text-to-Speech for transcript
+          const textToSpeak = extractTranscriptText(currentQuestion.text);
+          
+          if (textToSpeak) {
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            
+            // Configure speech settings
+            utterance.rate = 0.9; // Slightly slower for clarity
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            utterance.lang = 'en-IN'; // Indian English
+            
+            // Try to use Indian English voice
+            const voices = window.speechSynthesis.getVoices();
+            
+            // Priority order: Indian English voices
+            const preferredVoice = 
+              // First try: Google Indian English voices
+              voices.find(voice => voice.lang === 'en-IN' && voice.name.includes('Google')) ||
+              // Second try: Microsoft Indian English voices
+              voices.find(voice => voice.lang === 'en-IN' && voice.name.includes('Microsoft')) ||
+              // Third try: Any Indian English voice
+              voices.find(voice => voice.lang === 'en-IN') ||
+              // Fourth try: Any English voice with 'India' in name
+              voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('india')) ||
+              // Fallback: Any English voice
+              voices.find(voice => voice.lang.startsWith('en'));
+            
+            if (preferredVoice) {
+              utterance.voice = preferredVoice;
+              console.log('Using voice:', preferredVoice.name, preferredVoice.lang);
             }
-          }).catch(() => {
-            console.error('Audio playback failed');
-            setIsPlaying(false);
-          });
+            
+            utterance.onstart = () => {
+              setIsPlaying(true);
+              setPlayCount(prev => prev + 1);
+            };
+            
+            utterance.onend = () => {
+              setIsPlaying(false);
+            };
+            
+            utterance.onerror = () => {
+              setIsPlaying(false);
+              console.error('Speech synthesis failed');
+            };
+            
+            window.speechSynthesis.speak(utterance);
+          }
         }
       }
     }
+  };
+
+  // Extract transcript text from question text
+  const extractTranscriptText = (text: string): string => {
+    // Remove instruction text and extract only the transcript/content to be spoken
+    // Look for patterns like "Listen to the description:" or "Transcript:"
+    
+    // Remove common instruction phrases
+    let cleanText = text
+      .replace(/^Listen to the description[:\s]*/i, '')
+      .replace(/^Listen and [^:]*[:\s]*/i, '')
+      .replace(/^Listen[:\s]*/i, '')
+      .replace(/^Transcript[:\s]*/i, '')
+      .replace(/^Audio[:\s]*/i, '')
+      .replace(/\n\nChoose the correct.*$/s, '')
+      .replace(/\n\nAnswer:.*$/s, '')
+      .trim();
+    
+    return cleanText || text;
   };
 
   const handleRecording = async () => {
@@ -317,6 +379,9 @@ export default function LinguaskillModuleInterface({
     setPlayCount(0);
     setPreparationTime(0);
     setIsPlaying(false);
+    
+    // Stop any ongoing speech synthesis
+    window.speechSynthesis.cancel();
 
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -387,8 +452,10 @@ export default function LinguaskillModuleInterface({
       {/* Audio instructions */}
       <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
         <p className="text-xs text-blue-700">
-          🎧 <strong>Audio Test:</strong> Since no audio file is provided, a test tone sequence will play. 
-          In a real test, you would hear the actual listening content.
+          🎧 <strong>Text-to-Speech:</strong> The transcript will be read aloud in Indian English using your browser's speech synthesis. 
+          {currentQuestion.audioUrl && !currentQuestion.audioUrl.includes('/audio/') 
+            ? ' Audio file will be played.' 
+            : ' For production, replace with actual audio recordings.'}
         </p>
       </div>
     </div>

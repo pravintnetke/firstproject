@@ -550,6 +550,25 @@ export const sampleBatches: Batch[] = [
 // END-TO-END COMPLETE EXAM SCENARIO
 export const sampleExams: Exam[] = [
   {
+    id: 'linguaskill_aljamea_grade6',
+    title: 'Al Jamea Grade 6 English Test Set 1 - Complete',
+    description: 'Complete Grade 6 English assessment covering all 5 sections: A) Listening (40 marks, 40 questions), B) Speaking (40 marks, 3 tasks), C) Reading (60 marks, 45 questions in 4 parts), D) Writing (30 marks, 3 tasks), E) Grammar (15 marks, 15 questions). Total: 106 questions/tasks',
+    subject: 'English Language',
+    duration: 180, // All sections combined
+    totalMarks: 185, // Updated total: 40+40+60+30+15
+    passingMarks: 93,
+    negativeMarking: false,
+    randomizeQuestions: false,
+    proctoringEnabled: true,
+    status: 'published',
+    startDate: '2024-10-01T04:00:00Z',
+    endDate: '2025-12-31T12:00:00Z',
+    questions: [], // Linguaskill uses its own question system
+    assignedCandidates: ['3', '4', '5', '6', '7'],
+    examType: 'semester',
+    board: 'CBSE'
+  },
+  {
     id: 'linguaskill_001',
     title: 'Linguaskill General English Test',
     description: 'Comprehensive English language assessment with Reading, Listening, Writing, and Speaking modules',
